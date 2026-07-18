@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: >
+      PII-minimized customer dimension. Direct identifiers deliberately never
+      reach this layer — analysts join on customer_id and consume segment
+      attributes only, mirroring the Unity Catalog grant model.
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - name: total_balance
+        data_tests: [not_null]
+
+  - name: fct_transactions
+    description: JPY-normalized transaction fact at native grain.
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests:
+          - relationships:
+              # see stg_accounts: orphans trace back to quarantined CDC events
+              config:
+                severity: warn
+              arguments:
+                to: ref('dim_customers')
+                field: customer_id
+
+  - name: mart_loan_funnel
+    description: Loan application funnel and approval rates by product.
+    columns:
+      - name: product
+        data_tests: [unique, not_null]
+
+exposures:
+  - name: observability_dashboard
+    label: Pipeline Observability Dashboard
+    type: dashboard
+    maturity: medium
+    url: http://localhost:8501
+    description: >
+      Streamlit dashboard over pipeline run metrics
+      (observability/metrics/dashboard.py). Consumes marts for business
+      context alongside the metrics Delta table.
+    depends_on:
+      - ref('fct_transactions')
+      - ref('dim_customers')
+    owner:
+      name: data-platform
+      email: data-platform@bank.example
+
+  - name: incident_reporter_agent
+    label: Incident Reporter Agent
+    type: application
+    maturity: medium
+    description: >
+      Rule-based agent (ai/agents/incident_reporter) that reads pipeline
+      metrics and DQ results to produce incident reports; loan funnel and
+      transaction marts provide the business-impact context.
+    depends_on:
+      - ref('mart_loan_funnel')
+    owner:
+      name: data-platform
+      email: data-platform@bank.example

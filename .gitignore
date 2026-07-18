@@ -244,3 +244,10 @@ pipelines/gold_scala/project/project/
 .ruff_cache/
 .mypy_cache/
 .tools/
+
+# dbt
+transform/dbt_project/target/
+transform/dbt_project/dbt_packages/
+transform/dbt_project/logs/
+logs/
+transform/dbt_project/.user.yml

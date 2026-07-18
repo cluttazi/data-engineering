@@ -1,0 +1,68 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: Current (is_current, not deleted) customer versions from the SCD2 history.
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - name: segment
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [retail, premium, private]
+      - name: risk_rating
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [low, medium, high]
+
+  - name: stg_accounts
+    description: Current account versions.
+    columns:
+      - name: account_id
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests:
+          - not_null
+          - relationships:
+              # warn, not error: an orphaned account here almost always means
+              # the customer's insert event was quarantined upstream (corrupt
+              # CDC payload) — a data-quality signal for the DQ suite and the
+              # incident agent, not a reason to block the analytics build.
+              config:
+                severity: warn
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+
+  - name: stg_transactions
+    description: Posted transactions (append-only).
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: account_id
+        data_tests: [not_null]
+
+  - name: stg_loan_applications
+    description: Current loan application state.
+    columns:
+      - name: application_id
+        data_tests: [unique, not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [submitted, under_review, approved, rejected]
+
+  - name: stg_branches
+    description: Deduplicated branch reference data.
+    columns:
+      - name: branch_id
+        data_tests: [unique, not_null]
+
+  - name: stg_fx_rates
+    description: Deduplicated FX rates vs JPY.
+    columns:
+      - name: quote_currency
+        data_tests: [unique, not_null]
