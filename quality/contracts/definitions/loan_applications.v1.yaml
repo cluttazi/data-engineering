@@ -1,0 +1,48 @@
+contract: loan_applications
+version: 1
+owner: lending-domain@bank.example
+description: >
+  Loan application workflow state captured via CDC. Applications advance
+  submitted -> under_review -> approved/rejected; rejected applications may
+  be erased (op=d) under data-minimization policy, which silver records as
+  a closed SCD2 chain.
+primary_key: [application_id]
+event_time_field: updated_at
+sla:
+  freshness_hours: 24
+fields:
+  - name: application_id
+    type: string
+    nullable: false
+    description: Stable business key (LOAN-*).
+  - name: customer_id
+    type: string
+    nullable: false
+  - name: product
+    type: string
+    nullable: false
+    allowed_values: [personal_loan, mortgage, auto_loan, card]
+  - name: amount
+    type: decimal(18,2)
+    nullable: false
+    pii: true
+    pii_category: financial
+  - name: term_months
+    type: integer
+    nullable: false
+  - name: status
+    type: string
+    nullable: false
+    allowed_values: [submitted, under_review, approved, rejected]
+  - name: credit_score
+    type: integer
+    nullable: true
+    pii: true
+    pii_category: sensitive
+    description: Bureau score at application time; sensitive under FISC guidance.
+  - name: submitted_at
+    type: timestamp
+    nullable: false
+  - name: updated_at
+    type: timestamp
+    nullable: false

@@ -1,0 +1,51 @@
+contract: customers
+version: 1
+owner: data-platform@bank.example
+description: >
+  Core customer master data captured via CDC from the operational banking
+  database. Heavily PII-bearing: silver access is restricted to the
+  data-engineers group; analysts consume masked gold marts only.
+primary_key: [customer_id]
+event_time_field: updated_at
+sla:
+  freshness_hours: 24
+fields:
+  - name: customer_id
+    type: string
+    nullable: false
+    description: Stable business key (CUST-*).
+  - name: full_name
+    type: string
+    nullable: false
+    pii: true
+    pii_category: direct_identifier
+  - name: email
+    type: string
+    nullable: false
+    pii: true
+    pii_category: direct_identifier
+  - name: phone
+    type: string
+    nullable: true
+    pii: true
+    pii_category: direct_identifier
+  - name: address
+    type: string
+    nullable: true
+    pii: true
+    pii_category: quasi_identifier
+  - name: segment
+    type: string
+    nullable: false
+    allowed_values: [retail, premium, private]
+  - name: risk_rating
+    type: string
+    nullable: false
+    allowed_values: [low, medium, high]
+    description: KYC/AML risk classification; drives review cadence.
+  - name: created_at
+    type: timestamp
+    nullable: false
+  - name: updated_at
+    type: timestamp
+    nullable: false
