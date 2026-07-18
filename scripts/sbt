@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# sbt wrapper: uses a system sbt when present, otherwise bootstraps the
+# sbt launcher jar from Maven Central (works behind proxies that block
+# GitHub release downloads). Always runs from pipelines/gold_scala.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+GOLD_DIR="$REPO_ROOT/pipelines/gold_scala"
+LAUNCH_JAR="$REPO_ROOT/.tools/sbt-launch.jar"
+SBT_VERSION="1.10.7"
+
+cd "$GOLD_DIR"
+
+if command -v sbt >/dev/null 2>&1; then
+    exec sbt "$@"
+fi
+
+if [ ! -f "$LAUNCH_JAR" ]; then
+    mkdir -p "$REPO_ROOT/.tools"
+    echo "downloading sbt-launch $SBT_VERSION from Maven Central..." >&2
+    curl -sSf -o "$LAUNCH_JAR" \
+        "https://repo1.maven.org/maven2/org/scala-sbt/sbt-launch/$SBT_VERSION/sbt-launch-$SBT_VERSION.jar"
+fi
+
+exec java -Xmx1536m -jar "$LAUNCH_JAR" "$@"
