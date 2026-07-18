@@ -1,0 +1,19 @@
+# dbt on DuckDB over exported silver snapshots.
+# Why DuckDB and not Spark for local dbt: docs/adr/003-duckdb-parquet-export-for-dbt.md
+name: lakehouse
+version: "1.0.0"
+profile: lakehouse
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+
+target-path: target
+clean-targets: [target, dbt_packages]
+
+models:
+  lakehouse:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

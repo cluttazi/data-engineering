@@ -1,0 +1,26 @@
+version: 2
+
+sources:
+  - name: silver
+    description: >
+      Parquet snapshots exported from the silver Delta tables by
+      pipelines/silver/export_for_dbt.py. dbt never reads Delta directly —
+      the export is the hermetic hand-off between the Spark side and the
+      analytics side (see docs/adr/003).
+    meta:
+      external_location: "read_parquet('{{ env_var('LAKEHOUSE_EXPORTS', 'data/exports') }}/silver/{name}/*.parquet')"
+    tables:
+      - name: customers
+        description: SCD2 customer history (all versions).
+      - name: accounts
+        description: SCD2 account history (all versions).
+      - name: transactions
+        description: Append-only posted transactions.
+      - name: loan_applications
+        description: SCD2 loan application history.
+      - name: branches
+        description: Branch reference data (batch feed, may contain resend duplicates).
+      - name: products
+        description: Product catalog reference data.
+      - name: fx_rates
+        description: FX rates vs JPY (batch feed).

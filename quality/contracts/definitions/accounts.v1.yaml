@@ -1,0 +1,43 @@
+contract: accounts
+version: 1
+owner: data-platform@bank.example
+description: >
+  Deposit account state captured via CDC. Balance is a point-in-time
+  snapshot maintained by the core banking system; historized as SCD2 in
+  silver so balance history is queryable.
+primary_key: [account_id]
+event_time_field: updated_at
+sla:
+  freshness_hours: 24
+fields:
+  - name: account_id
+    type: string
+    nullable: false
+    description: Stable business key (ACCT-*).
+  - name: customer_id
+    type: string
+    nullable: false
+    description: Owning customer; referential integrity checked by DQ suite.
+  - name: account_type
+    type: string
+    nullable: false
+    allowed_values: [checking, savings, term_deposit]
+  - name: currency
+    type: string
+    nullable: false
+    allowed_values: [JPY, USD, EUR]
+  - name: balance
+    type: decimal(18,2)
+    nullable: false
+    pii: true
+    pii_category: financial
+  - name: status
+    type: string
+    nullable: false
+    allowed_values: [active, frozen, closed]
+  - name: opened_at
+    type: timestamp
+    nullable: false
+  - name: updated_at
+    type: timestamp
+    nullable: false

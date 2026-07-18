@@ -1,0 +1,48 @@
+contract: transactions
+version: 1
+owner: data-platform@bank.example
+description: >
+  Booked account transactions, append-only. The volume driver of the
+  platform; per-transaction amounts are financial PII and never surface
+  unaggregated in gold.
+primary_key: [transaction_id]
+event_time_field: booked_at
+sla:
+  freshness_hours: 6
+fields:
+  - name: transaction_id
+    type: string
+    nullable: false
+    description: Stable business key (TXN-*).
+  - name: account_id
+    type: string
+    nullable: false
+  - name: amount
+    type: decimal(18,2)
+    nullable: false
+    pii: true
+    pii_category: financial
+  - name: currency
+    type: string
+    nullable: false
+    allowed_values: [JPY, USD, EUR]
+  - name: txn_type
+    type: string
+    nullable: false
+    allowed_values: [deposit, withdrawal, transfer, card_payment, fee]
+  - name: counterparty
+    type: string
+    nullable: true
+    pii: true
+    pii_category: quasi_identifier
+  - name: channel
+    type: string
+    nullable: false
+    allowed_values: [branch, atm, online, mobile]
+  - name: status
+    type: string
+    nullable: false
+    allowed_values: [posted, pending, reversed]
+  - name: booked_at
+    type: timestamp
+    nullable: false

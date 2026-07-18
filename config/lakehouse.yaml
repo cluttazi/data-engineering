@@ -1,0 +1,46 @@
+# Central runtime configuration for the local lakehouse.
+# Every path is relative to the repo root unless absolute.
+#
+# Environment overrides:
+#   LAKEHOUSE_SOURCE_MODE=file|kafka|auto   transport for bronze ingestion
+#   LAKEHOUSE_ROOT=<dir>                    override the lakehouse storage root
+
+source:
+  # file  -> read Debezium-style NDJSON dropped by the CDC simulator (default; no infra needed)
+  # kafka -> read the same events from Redpanda/Kafka (requires `make up`)
+  # auto  -> probe the bootstrap servers with a 1s TCP connect; fall back to file
+  mode: file
+  cdc_landing_dir: data/landing/cdc
+  batch_landing_dir: data/landing/batch
+  kafka:
+    bootstrap_servers: localhost:19092
+    topic_prefix: banking.cdc
+    starting_offsets: earliest
+
+storage:
+  lakehouse_root: data/lakehouse
+  checkpoints_dir: data/checkpoints
+  exports_dir: data/exports
+  warehouse_db: data/warehouse.duckdb
+  run_dir: data/run
+  reports_dir: data/reports
+
+entities:
+  # CDC-tracked tables of the retail-banking source system.
+  - name: customers
+    primary_key: customer_id
+    scd: type2
+  - name: accounts
+    primary_key: account_id
+    scd: type2
+  - name: transactions
+    primary_key: transaction_id
+    scd: append_only
+  - name: loan_applications
+    primary_key: application_id
+    scd: type2
+
+spark:
+  driver_memory: 3g
+  shuffle_partitions: 8
+  session_timezone: UTC

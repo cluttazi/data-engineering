@@ -1,0 +1,22 @@
+table: silver/customers
+layer: silver
+filter: "is_current = true AND is_deleted = false"
+checks:
+  - type: not_null
+    column: customer_id
+  - type: not_null
+    column: email
+  - type: unique
+    columns: [customer_id]
+  - type: accepted_values
+    column: segment
+    values: [retail, premium, private]
+  - type: accepted_values
+    column: risk_rating
+    values: [low, medium, high]
+  - type: row_count_between
+    min_rows: 1
+  - type: freshness
+    column: updated_at
+    max_age_hours: 48
+    severity: warn

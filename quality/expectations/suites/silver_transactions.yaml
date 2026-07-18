@@ -1,0 +1,26 @@
+table: silver/transactions
+layer: silver
+checks:
+  - type: not_null
+    column: transaction_id
+  - type: not_null
+    column: amount
+  - type: unique
+    columns: [transaction_id]
+  - type: accepted_values
+    column: txn_type
+    values: [deposit, withdrawal, transfer, card_payment, fee]
+  - type: accepted_values
+    column: channel
+    values: [branch, atm, online, mobile]
+  - type: accepted_values
+    column: status
+    values: [posted, pending, reversed]
+  - type: referential_integrity
+    column: account_id
+    ref_table: silver/accounts
+    ref_column: account_id
+    ref_filter: "is_current = true"
+    severity: warn
+  - type: row_count_between
+    min_rows: 1

@@ -1,0 +1,9 @@
+# Local profile only — CI and the demo both use this. The warehouse file and
+# the export root are overridable so tests can point at fixtures.
+lakehouse:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('LAKEHOUSE_WAREHOUSE', 'data/warehouse.duckdb') }}"
+      threads: 4

@@ -1,0 +1,98 @@
+# Optional local infrastructure for the kafka transport path.
+#
+# The demo does NOT require this stack: by default the CDC simulator writes
+# Debezium-style NDJSON files and bronze reads them with a file source
+# (see docs/adr/006-file-vs-kafka-dual-mode-transport.md). Start this stack
+# with `make up` to exercise the Kafka path end-to-end:
+#
+#   make up
+#   LAKEHOUSE_SOURCE_MODE=kafka make cdc bronze
+#
+# Services:
+#   postgres  - the "operational" banking database, configured for logical
+#               replication exactly as a real Debezium deployment requires
+#               (wal_level=logical). The schema in initdb/ mirrors the entities
+#               the simulator emits, documenting the production CDC source.
+#   redpanda  - Kafka-API-compatible broker, single binary, no controller
+#               quorum ceremony. External listener on 19092.
+#   minio     - S3-compatible object store standing in for the cloud
+#               lakehouse bucket that Terraform provisions for real.
+
+name: lakehouse-platform
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: lakehouse-postgres
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=4"]
+    environment:
+      POSTGRES_USER: banking
+      POSTGRES_PASSWORD: banking # local demo only — never a real credential
+      POSTGRES_DB: banking
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U banking -d banking"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redpanda:
+    image: redpandadata/redpanda:v24.2.18
+    container_name: lakehouse-redpanda
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=1G
+      - --overprovisioned
+      - --node-id=0
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --mode=dev-container
+    ports:
+      - "19092:19092"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health --exit-when-healthy || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  minio:
+    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    container_name: lakehouse-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: lakehouse
+      MINIO_ROOT_PASSWORD: lakehouse-local # local demo only
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:RELEASE.2024-11-21T17-21-54Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 lakehouse lakehouse-local &&
+      mc mb --ignore-existing local/lakehouse-bronze local/lakehouse-silver local/lakehouse-gold &&
+      exit 0"
+
+volumes:
+  postgres-data:
+  redpanda-data:
+  minio-data:
