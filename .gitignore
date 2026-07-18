@@ -216,3 +216,31 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- lakehouse-platform ---
+# Local data plane: landing files, Delta tables, checkpoints, exports, reports
+data/
+*.duckdb
+*.duckdb.wal
+
+# Spark local-mode droppings
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Scala / sbt
+pipelines/gold_scala/target/
+pipelines/gold_scala/project/target/
+pipelines/gold_scala/project/project/
+.bsp/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Tool caches
+.ruff_cache/
+.mypy_cache/
+.tools/
