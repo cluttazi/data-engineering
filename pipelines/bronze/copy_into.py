@@ -72,7 +72,12 @@ def _read_files(spark: SparkSession, dataset: BatchDataset, paths: list[str]) ->
     for key, value in dataset.reader_options.items():
         reader = reader.option(key, value)
     df = reader.load(paths)
-    return df.withColumn("_source_file", F.col("_metadata.file_path"))
+    # _metadata.file_path is a file:// URI; the ledger stores plain filesystem
+    # paths so the set-difference against os-listed files actually matches —
+    # a scheme mismatch here would silently reload every file on every run.
+    return df.withColumn(
+        "_source_file", F.regexp_replace(F.col("_metadata.file_path"), "^file:/{0,2}(?=/)", "")
+    )
 
 
 def run_copy_into(
