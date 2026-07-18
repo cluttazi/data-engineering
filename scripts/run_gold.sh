@@ -12,7 +12,9 @@ cd "$REPO_ROOT"
 JAR="$(ls pipelines/gold_scala/target/scala-2.13/gold_2.13-*.jar 2>/dev/null | head -1 || true)"
 if [ -z "$JAR" ]; then
     echo "gold jar not found - building with sbt (scripts/sbt package)..." >&2
-    ./scripts/sbt -batch package >&2
+    # No -batch: with explicit commands sbt is non-interactive anyway, and the
+    # flag is rejected when `sbt` is a raw sbt-launch shim (official runner only).
+    ./scripts/sbt package >&2
     JAR="$(ls pipelines/gold_scala/target/scala-2.13/gold_2.13-*.jar | head -1)"
 fi
 
