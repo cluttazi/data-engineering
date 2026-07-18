@@ -86,4 +86,45 @@ Makefile and module layout. No drift found; 7 ADRs indexed and referenced.
 
 ## Done vs Deferred
 
-(to be filled at the end of the pass)
+### Done
+
+- Full gate audit recorded above: lint PASS, pytest 71/71 PASS, ScalaTest
+  6/6 PASS, contract compat PASS, governance render no-drift, demo baseline
+  FAIL at gold.
+- `fix(gold)`: removed `-batch` from `scripts/run_gold.sh` (finding F1).
+  Verified with `make clean` + full `make demo` from a deleted jar: the sbt
+  package path is exercised and **all 12 steps are green**, including
+  `dbt_build` and `data_quality` which the bug previously skipped.
+- Confirmed dependency lock is fresh (F2) and CI action versions current
+  (F3) — no bump commits necessary, which is itself the audit result.
+
+### Deferred (intentionally, with reasons)
+
+- `pyspark`/`delta-spark` bump: hard-rule lockstep pair across
+  `pyproject.toml`, `build.sbt`, `run_gold.sh`; only advances when a new
+  verified pair is adopted everywhere at once. Out of scope for a
+  light-touch pass.
+- sbt 1.10.7 → 1.11.x (`project/build.properties` + `scripts/sbt`
+  `SBT_VERSION`): works as pinned, CI cache-keyed on it; cosmetic.
+- pytest 9 / any constraint-widening of dev tools: current constraints
+  already resolve to latest stable within their lines; widening buys nothing
+  today and risks churn.
+- CI workflow edits: none needed — workflows already mirror the local gates
+  and use current action majors.
+
+## Summary (PR-description style)
+
+Audit + light-touch modernization pass. Ran every repo gate from a clean
+sync: lint (ruff+mypy strict), full pytest incl. spark marks, ScalaTest,
+contract compatibility, governance-artifact drift, and the end-to-end demo.
+Everything was green except `make demo`, which failed at the gold step in
+environments where `sbt` on PATH is a raw sbt-launch shim: `run_gold.sh`
+passed `-batch`, a flag only the official sbt runner script understands.
+Removed the redundant flag; a clean-slate `make demo` now completes all 12
+steps green (gold jar rebuilt through the fixed path, dbt and DQ no longer
+skipped). Dependency inventory shows the lockfile already at latest stable
+within constraints (ruff 0.14.14, mypy 1.20.2, pytest 8.4.2, duckdb 1.4.5,
+dbt-duckdb 1.10.1) and the pyspark 4.1.1 / delta-spark 4.3.1 verified pair
+intact everywhere it is pinned; CI workflows already use current action
+majors and mirror the local gates. No contract, governance, or metrics-
+schema surfaces were touched.
