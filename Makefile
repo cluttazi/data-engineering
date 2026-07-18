@@ -65,7 +65,7 @@ dashboard: ## Launch the Streamlit metrics dashboard (needs `uv sync --extra das
 	$(UV) run streamlit run observability/metrics/dashboard.py
 
 demo: ## End-to-end: cdc -> bronze -> silver -> gold -> dbt -> dq -> rag -> agent -> summary
-	$(UV) run python -m orchestration.demo
+	EVENTS=$(EVENTS) SEED=$(SEED) CORRUPT_PCT=$(CORRUPT_PCT) $(UV) run python -m orchestration.demo
 
 test: ## Run the Python test suite
 	$(UV) run pytest

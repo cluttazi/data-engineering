@@ -1,0 +1,111 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_FROZEN: "1" # never silently re-resolve in CI; uv.lock is the truth
+
+jobs:
+  lint:
+    name: lint & type-check & generated-artifact drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --group dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy .
+      - name: contract compatibility gate
+        run: uv run python -m quality.contracts.compat
+      - name: governance artifacts must match their sources
+        run: |
+          uv run python -m governance.unity_catalog.render
+          git diff --exit-code governance/unity_catalog/generated/
+
+  test-python:
+    name: pytest (unit + spark integration)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --group dev
+      - name: non-spark tests (fast feedback)
+        run: uv run pytest -q -m "not spark"
+      - name: spark tests
+        run: uv run pytest -q -m spark
+
+  dbt:
+    name: dbt build (hermetic fixtures, no Spark)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --group dev
+      - run: uv run python scripts/make_dbt_fixtures.py --out .ci_fixtures
+      - name: dbt build
+        env:
+          LAKEHOUSE_EXPORTS: .ci_fixtures/exports
+          LAKEHOUSE_WAREHOUSE: .ci_fixtures/warehouse.duckdb
+        run: uv run dbt build --project-dir transform/dbt_project --profiles-dir transform/dbt_project
+
+  scala:
+    name: scala gold module (scalafmt + scalatest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: sbt/setup-sbt@v1
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.ivy2/cache
+            ~/.cache/coursier
+            ~/.sbt
+          key: sbt-${{ runner.os }}-${{ hashFiles('pipelines/gold_scala/build.sbt', 'pipelines/gold_scala/project/**') }}
+      - name: scalafmt check + tests + package
+        working-directory: pipelines/gold_scala
+        run: sbt scalafmtCheckAll test package
+
+  terraform:
+    name: terraform fmt & validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+      - working-directory: platform/terraform
+        run: terraform fmt -check -recursive
+      - working-directory: platform/terraform
+        run: terraform init -backend=false -input=false
+      - working-directory: platform/terraform
+        run: terraform validate
+
+  compose:
+    name: docker compose config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f platform/docker/docker-compose.yml config -q
