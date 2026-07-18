@@ -1,0 +1,25 @@
+table: silver/accounts
+layer: silver
+filter: "is_current = true AND is_deleted = false"
+checks:
+  - type: not_null
+    column: account_id
+  - type: unique
+    columns: [account_id]
+  - type: accepted_values
+    column: status
+    values: [active, frozen, closed]
+  - type: accepted_values
+    column: currency
+    values: [JPY, USD, EUR]
+  # warn, not error: an orphan here almost always means the owning customer's
+  # insert event was quarantined upstream — the signal belongs in the incident
+  # report, not in a hard pipeline failure. Same policy as the dbt RI tests.
+  - type: referential_integrity
+    column: customer_id
+    ref_table: silver/customers
+    ref_column: customer_id
+    ref_filter: "is_current = true"
+    severity: warn
+  - type: row_count_between
+    min_rows: 1

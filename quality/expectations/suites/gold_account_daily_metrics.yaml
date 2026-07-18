@@ -1,0 +1,11 @@
+table: gold/account_daily_metrics
+layer: gold
+checks:
+  - type: not_null
+    column: account_id
+  - type: not_null
+    column: txn_date
+  - type: unique
+    columns: [account_id, txn_date]
+  - type: row_count_between
+    min_rows: 1

@@ -44,6 +44,10 @@ def get_spark(
         )
         .config("spark.ui.enabled", "false")
         .config("spark.sql.sources.parallelPartitionDiscovery.parallelism", "4")
+        # Contract evolution (e.g. customers v1 -> v2 adds a nullable column)
+        # must flow through MERGE INTO without manual DDL; compat.py guarantees
+        # only additive, nullable changes reach this point.
+        .config("spark.databricks.delta.schema.autoMerge.enabled", "true")
     )
     extra_packages = [KAFKA_PACKAGE] if with_kafka else []
     return configure_spark_with_delta_pip(builder, extra_packages=extra_packages).getOrCreate()
